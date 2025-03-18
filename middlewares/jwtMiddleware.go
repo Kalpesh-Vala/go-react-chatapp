@@ -2,32 +2,12 @@ package middlewares
 
 import (
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/kalpesh-vala/go-chat-app/utils"
 )
 
-var jwtKey = []byte(os.Getenv("JWT_SECRET"))
-
-type Claims struct {
-	Email string `json:"email"`
-	jwt.StandardClaims
-}
-
-func GenerateToken(email string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &Claims{
-		Email: email,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtKey)
-}
-
+// JWTAuthMiddleware validates JWT tokens in incoming requests
 func JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
@@ -37,12 +17,8 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
+		claims, err := utils.ValidateToken(tokenString) // Using function from utils/jwt.go
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			c.Abort()
 			return
